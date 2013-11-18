@@ -22,9 +22,11 @@ vocabulary host-compiler    \ Overrides metacompiler definitions.
 vocabulary host-interpreter \ Overrides metacompiler definitions.
 vocabulary meta-compiler    \ Words executed in interpretation state.
 vocabulary meta-interpreter \ Immediate words used in compilation state.
+vocabulary target
 
 : interpreter-context   only forth also meta-interpreter ;
-: compiler-context   only previous meta-compiler ;
+\ : compiler-context   only previous meta-compiler ;
+: compiler-context   only target also meta-compiler ;
 : meta-context   compiler-context also meta-interpreter ;
 
 \ Offset, within the definition of :, to the runtime action of :.
@@ -36,6 +38,11 @@ vocabulary meta-interpreter \ Immediate words used in compilation state.
 
 : input>r   r> save-input n>r >r ;
 : r>input   r> nr> restore-input abort" Restore-input?" >r ;
+
+defer t-compile,
+: (create) ( a u -- )   input>r string-input create r>input ;
+: host-word ( xt a u -- )   get-current >r ['] target set-current
+   (create) , r> set-current  does> @ t-compile, ;
 
 : copy   >in @ >r : r> >in !  ' compile, postpone ; ;
 : immediate:   copy immediate ;
@@ -78,12 +85,10 @@ t-space bitmap t-map
    dup emit endcase ;
 : .quoted   [char] " emit  bounds ?do i c@ .qc loop  [char] " emit ;
 
-vocabulary forward
 create forward-references 0 ,
-: create-forward   also forward definitions
+: create-forward   also target definitions
    create previous immediate 0 ,  latestxt forward-references chain, ;
 : .forward   >in @  ." struct word " parse-name .mangled ." _word;" cr  >in ! ;
-: ?forward   get-order n>r only forward evaluate nr> set-order ;
 
 : pph   compile, 2drop ;
 
@@ -175,6 +180,10 @@ create t-wordlist  /wordlist allot  t-wordlist /wordlist erase
 t-wordlist current !
 t-dictionary dp !
              
+\ Redefine HEADER, to create a word in the host dictionary.
+' compile, is t-compile,
+: header,   2dup here -rot host-word  header, ;
+
 : >mark   here 0 , ;
 : >resolve   here swap ! ;
 : <mark      here ;
@@ -187,12 +196,12 @@ t-dictionary dp !
 : forward: ( "name" -- )   .forward  create-forward  does> forward, ;
 
 only forth definitions also meta-interpreter also host-interpreter
-finders tpp   compile, ?forward abort
+finders tpp   compile, undef abort
 : target,   here addr!  find-name tpp ;
 : ppt   drop postpone sliteral postpone target, ;
 : ppn   drop ppt ;
 finders pp   ppt ppn pph
-: t-postpone   parse-name 2dup host-find-name pp ; immediate
+: t-postpone   ." TPP:" parse-name 2dup type 2dup host-find-name .s pp ; immediate
 : code,   target-xt >code @ , ;
 : postcode   parse-name postpone sliteral postpone code, ; immediate
 
@@ -332,12 +341,18 @@ immediate: (       immediate: \
 
 only forth definitions
 
-: ?compile,   state @ abort" Metacompile to host definition?!?" execute ;
+\ : ?compile,   state @ abort" Metacompile to host definition?!?" execute ;
+: ?compile,   execute ;
 
 : ?literal,   state @ if [M] literal then ;
 
+0 [if]
 : meta-number  2>r 0 0 2r@ >number nip if 2drop 2r> target,
    else 2r> 3drop ?literal, then ;
+[else]
+: meta-number   2>r 0 0 2r@ >number nip if 2r> undef
+   else 2r> 3drop ?literal, then ;
+[then]
 
 finders meta-xt   ?compile, meta-number execute
 
