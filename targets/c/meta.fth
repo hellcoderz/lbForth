@@ -105,6 +105,7 @@ only forth definitions
 
 : find-does ( a1 u -- a2 )   also does-table evaluate previous ;
 : host-find-name   get-order n>r  compiler-context find-name  nr> set-order ;
+: target-evaluate   get-order n>r  compiler-context evaluate  nr> set-order ;
 
 : us,    here over allot  swap cmove ;
 : save-function-name ( a1 u -- a2 )   here -rot  dup c, us, ;
@@ -194,14 +195,17 @@ t-dictionary dp !
 : forward, ( a -- )   here swap chain, ;
 : forward: ( "name" -- )   .forward  create-forward  does> forward, ;
 
+: <body   here cell - dup @ >body swap ! ;
+: <code   here cell - dup @ >code @ swap ! ;
+
 only forth definitions also meta-interpreter also host-interpreter
-finders tpp   execute undef abort
-: target,   here addr!  host-find-name tpp ;
+
+: target,   here addr!  target-evaluate ;
 : ppt   drop postpone sliteral postpone target, ;
 : ppn   drop ppt ;
 finders pp   ppt ppn pph
 : t-postpone   parse-name 2dup host-find-name pp ; immediate
-: code,   target-xt >code @ , ;
+: code,   target, <code ;
 : postcode   parse-name postpone sliteral postpone code, ; immediate
 
 : does!   latestxt >does ! ;
@@ -290,8 +294,7 @@ only forth also meta-interpreter also meta-compiler definitions also host-interp
 : to_does   does-offset t-postpone literal ; immediate
 : to_body   body-offset t-postpone literal ; immediate
 : [']   t-postpone (literal) parse-name target, ; immediate
-: is   t-postpone (literal) parse-name target, t-postpone >body
-   t-postpone ! ; immediate
+: is   t-postpone (literal) parse-name target, <body t-postpone ! ; immediate
 : to   t-postpone (literal) parse-name target, t-postpone >body
    t-postpone ! ; immediate
 
@@ -341,18 +344,10 @@ only forth definitions
 
 : ?literal,   state @ if [M] literal then ;
 
-0 [if]
-: meta-number  2>r 0 0 2r@ >number nip if 2drop 2r> target,
+: meta-number ( a u -- )   2>r 0 0 2r@ >number nip if 2r> undef
    else 2r> 3drop ?literal, then ;
-[else]
-: meta-number   2>r 0 0 2r@ >number nip if 2r> undef
-   else 2r> 3drop ?literal, then ;
-[then]
 
 finders meta-xt   execute meta-number execute
-
-\ 1. Search host order.  If found, always execute!
-\ 2. If not found, search target dictionary.  If found, always compile!
 
 : meta-parsed ( a u -- )   find-name meta-xt ;
 : meta-compile   action-of parsed  ['] meta-parsed is parsed
