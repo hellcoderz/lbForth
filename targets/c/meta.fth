@@ -25,7 +25,6 @@ vocabulary meta-interpreter \ Immediate words used in compilation state.
 vocabulary target
 
 : interpreter-context   only forth also meta-interpreter ;
-\ : compiler-context   only previous meta-compiler ;
 : compiler-context   only target also meta-compiler ;
 : meta-context   compiler-context also meta-interpreter ;
 
@@ -87,7 +86,7 @@ t-space bitmap t-map
 
 create forward-references 0 ,
 : create-forward   also target definitions
-   create previous immediate 0 ,  latestxt forward-references chain, ;
+   create previous ( immediate ) 0 ,  latestxt forward-references chain, ;
 : .forward   >in @  ." struct word " parse-name .mangled ." _word;" cr  >in ! ;
 
 : pph   compile, 2drop ;
@@ -105,7 +104,7 @@ vocabulary does-table  also does-table definitions previous
 only forth definitions
 
 : find-does ( a1 u -- a2 )   also does-table evaluate previous ;
-: host-find-name   get-order n>r  meta-context find-name  nr> set-order ;
+: host-find-name   get-order n>r  compiler-context find-name  nr> set-order ;
 
 : us,    here over allot  swap cmove ;
 : save-function-name ( a1 u -- a2 )   here -rot  dup c, us, ;
@@ -196,12 +195,12 @@ t-dictionary dp !
 : forward: ( "name" -- )   .forward  create-forward  does> forward, ;
 
 only forth definitions also meta-interpreter also host-interpreter
-finders tpp   compile, undef abort
-: target,   here addr!  find-name tpp ;
+finders tpp   execute undef abort
+: target,   here addr!  host-find-name tpp ;
 : ppt   drop postpone sliteral postpone target, ;
 : ppn   drop ppt ;
 finders pp   ppt ppn pph
-: t-postpone   ." TPP:" parse-name 2dup type 2dup host-find-name .s pp ; immediate
+: t-postpone   parse-name 2dup host-find-name pp ; immediate
 : code,   target-xt >code @ , ;
 : postcode   parse-name postpone sliteral postpone code, ; immediate
 
@@ -312,7 +311,6 @@ only forth also meta-interpreter also meta-compiler definitions also host-interp
 : [char]   char t-postpone literal ; immediate
 : abort"   t-postpone if [M] s" t-postpone cr t-postpone type t-postpone cr
    t-postpone abort t-postpone then ; immediate
-\ : abort"   t-postpone if [M] s" t-postpone (abort") t-postpone then ; immediate
 
 interpreter-context definitions also host-interpreter
 : resolving   postpone t-postpone  postpone <resolve ; immediate
@@ -341,9 +339,6 @@ immediate: (       immediate: \
 
 only forth definitions
 
-\ : ?compile,   state @ abort" Metacompile to host definition?!?" execute ;
-: ?compile,   execute ;
-
 : ?literal,   state @ if [M] literal then ;
 
 0 [if]
@@ -354,7 +349,7 @@ only forth definitions
    else 2r> 3drop ?literal, then ;
 [then]
 
-finders meta-xt   ?compile, meta-number execute
+finders meta-xt   execute meta-number execute
 
 \ 1. Search host order.  If found, always execute!
 \ 2. If not found, search target dictionary.  If found, always compile!
