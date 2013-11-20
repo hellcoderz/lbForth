@@ -86,13 +86,14 @@ t-space bitmap t-map
 
 create forward-references 0 ,
 : create-forward   also target definitions
-   create previous ( immediate ) 0 ,  latestxt forward-references chain, ;
+   create previous 0 ,  latestxt forward-references chain, ;
 : .forward   >in @  ." struct word " parse-name .mangled ." _word;" cr  >in ! ;
 
 : pph   compile, 2drop ;
 
+defer does+
 : does: ( u "name1" "name2" -- )   create cells , parse-name s,
-   does> @+ swap @+ ;
+   does> @+ swap @+ does+ ;
 vocabulary does-table  also does-table definitions previous
 
 0 does: create nop
@@ -190,7 +191,6 @@ t-dictionary dp !
 : <resolve   , ;
 
 : find-name   #name min 2dup t-wordlist search-wordlist dup if 2nip then ;
-: target-xt  find-name -1 <> ?undef ;
 
 : forward, ( a -- )   here swap chain, ;
 : forward: ( "name" -- )   .forward  create-forward  does> forward, ;
@@ -201,6 +201,7 @@ t-dictionary dp !
 only forth definitions also meta-interpreter also host-interpreter
 
 : target,   here addr!  target-evaluate ;
+: target-xt   target,  -1 cells allot  here @  0 here ! ;
 : ppt   drop postpone sliteral postpone target, ;
 : ppn   drop ppt ;
 finders pp   ppt ppn pph
@@ -208,8 +209,9 @@ finders pp   ppt ppn pph
 : code,   target, <code ;
 : postcode   parse-name postpone sliteral postpone code, ; immediate
 
+:noname   target-xt >body + ; is does+
 : does!   latestxt >does ! ;
-: (does>)   find-does target-xt >body + does! ;
+: (does>)   find-does does! ;
 : (:-does>)   colon-runtime does! ;
 only forth also host-compiler definitions
 : does>   latestxt >name 2dup s" :" compare
