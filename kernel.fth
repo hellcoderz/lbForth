@@ -34,7 +34,7 @@ variable RP
 : rp@   RP @ cell + ;
 forward: ,
 forward: compile,
-: rp!   postpone (literal) RP , postpone ! ; immediate
+: rp!   compile (literal) RP , compile ! ; immediate
 
 variable  temp
 : drop    temp ! ;
@@ -103,7 +103,7 @@ forward: (sliteral)
 
 variable state
 
-: literal   state @ if postpone (literal) , then ; immediate
+: literal   state @ if compile (literal) , then ; immediate
 
 : undef ( a u -- )   ." Undefined: " type cr abort ;
 : ?undef ( a u x -- a u )   if undef then ;
@@ -192,7 +192,7 @@ variable csp
 
 : :   parse-name header, postcode dodoes  ] !csp
    [ here cell + ] ['] nop latestxt >does ! exit then >r ;
-: ;   reveal postpone exit [compile] [ ?csp ; immediate
+: ;   reveal compile exit [compile] [ ?csp ; immediate
 
 \ ----------------------------------------------------------------------
 

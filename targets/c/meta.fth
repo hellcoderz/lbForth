@@ -106,7 +106,7 @@ only forth definitions
 
 : find-does ( a1 u -- a2 )   also does-table evaluate previous ;
 : host-find-name   get-order n>r  compiler-context find-name  nr> set-order ;
-: target-evaluate   get-order n>r  compiler-context evaluate  nr> set-order ;
+: target-evaluate   get-order n>r  only target evaluate  nr> set-order ;
 
 : us,    here over allot  swap cmove ;
 : save-function-name ( a1 u -- a2 )   here -rot  dup c, us, ;
@@ -247,7 +247,7 @@ finders meta-postpone   postpone, abort compile,
 : defer   create s" abort" target,  does> @ execute ;
 : value   create ,  does> @ ;
 
-: '   parse-name find-name 0= ?undef ;
+: '   parse-name target-xt ; \ find-name 0= ?undef ;
 : immediate   latestxt dup c@ negate swap c! ;
 
 : [undefined]   parse-name find-name if drop 0 else 2drop -1 then ; immediate
@@ -307,9 +307,17 @@ only forth also meta-interpreter also meta-compiler definitions also host-interp
 : if           unresolved 0branch ; immediate
 : then         >resolve ; immediate
 
+\ meta-compile +   =>  execute target +  =>  compile + xt
+\ meta-compile if  =>  execute meta if
+\ meta-postpone +   =>  compile (literal), execute target + 
+\ meta-postpone if  =>  execute target if  => compile if xt
+
 : postpone   parse-name find-name meta-postpone ; immediate
 : postcode   t-postpone (literal) parse-name save-code-name a,
    t-postpone , ; immediate
+: compile   t-postpone (literal)  parse-name target,
+   t-postpone compile, ; immediate
+: [compile]   parse-name target, ; immediate
 
 : s"   t-postpone (sliteral)  [char] " parse  s, ; immediate
 : ."   [M] s"  t-postpone type ; immediate
