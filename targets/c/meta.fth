@@ -107,6 +107,9 @@ only forth definitions
 : find-does ( a1 u -- a2 )   also does-table evaluate previous ;
 : host-find-name   get-order n>r  compiler-context find-name  nr> set-order ;
 : target-evaluate   get-order n>r  only target evaluate  nr> set-order ;
+: t-find   get-order n>r  only target find-name  nr> set-order ;
+: target-xt   t-find 0= ?undef  >body @ ;
+: t-defined?   t-find if drop -1 else 2drop 0 then ;
 
 : us,    here over allot  swap cmove ;
 : save-function-name ( a1 u -- a2 )   here -rot  dup c, us, ;
@@ -190,7 +193,7 @@ t-dictionary dp !
 : <mark      here ;
 : <resolve   , ;
 
-: find-name   #name min 2dup t-wordlist search-wordlist dup if 2nip then ;
+\ : find-name   #name min 2dup t-wordlist search-wordlist dup if 2nip then ;
 
 : forward, ( a -- )   here swap chain, ;
 : forward: ( "name" -- )   .forward  create-forward  does> forward, ;
@@ -201,7 +204,6 @@ t-dictionary dp !
 only forth definitions also meta-interpreter also host-interpreter
 
 : target,   here addr!  target-evaluate ;
-: target-xt   target,  -1 cells allot  here @  0 here ! ;
 : ppt   drop postpone sliteral postpone target, ;
 : ppn   drop ppt ;
 finders pp   ppt ppn pph
@@ -250,7 +252,7 @@ finders meta-postpone   postpone, abort compile,
 : '   parse-name target-xt ; \ find-name 0= ?undef ;
 : immediate   latestxt dup c@ negate swap c! ;
 
-: [undefined]   parse-name find-name if drop 0 else 2drop -1 then ; immediate
+: [undefined]   parse-name t-defined? ; immediate
 : [defined]     postpone [undefined] 0= ; immediate
 
 : ?end ( xt nt -- nt 0 | xt 1 )   2dup < if rot drop swap -1 else drop 0 then ;
@@ -262,8 +264,7 @@ finders meta-postpone   postpone, abort compile,
 : s,   dup , string, ;
 
 only forth definitions
-: ?found   0= if cr ." Unresolved forward reference: " type cr abort then ;
-: resolve ( xt -- )   dup >name [M] find-name ?found  swap >body @
+: resolve ( xt -- )   dup >name target-xt  swap >body @
    begin dup while 2dup @ >r swap ! r> repeat 2drop ;
 : resolve-all-forward-references   forward-references
   begin @ ?dup while dup resolve  >body cell+ repeat ;
@@ -283,7 +284,7 @@ only forth definitions
 
 only forth also meta-interpreter also meta-compiler definitions also host-interpreter
 
-: [defined]   parse-name find-name if drop -1 else 2drop 0 then ; immediate
+: [defined]   parse-name t-defined? ; immediate
 : [undefined]   postpone [defined] 0= ; immediate
 
 : [   0 state !  interpreter-context ; immediate
