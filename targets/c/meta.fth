@@ -38,6 +38,7 @@ vocabulary target
 : input>r   r> save-input n>r >r ;
 : r>input   r> nr> restore-input abort" Restore-input?" >r ;
 
+defer number,
 defer t-compile,
 : (create) ( a u -- )   input>r string-input create r>input ;
 : host-word ( xt a u -- )   get-current >r ['] target set-current
@@ -239,10 +240,8 @@ interpreter-context definitions also host-interpreter
 : >resolve@   @ begin ?dup while dup @ here rot ! repeat ;
 
 : a,   here addr! , ;
-: postpone,   t-postpone (literal) a, t-postpone compile, ;
-finders meta-postpone   postpone, abort compile,
 
-: ]   1 state !  compiler-context ;
+: ]   compiler-context  ['] number, is number ;
 : constant   create , does> @ ;
 : variable   create cell allot ;
 : :   parse-name header, postcode dodoes  ] ( !csp )  does> >r ;
@@ -287,7 +286,7 @@ only forth also meta-interpreter also meta-compiler definitions also host-interp
 : [defined]   parse-name t-defined? ; immediate
 : [undefined]   postpone [defined] 0= ; immediate
 
-: [   0 state !  interpreter-context ; immediate
+: [   ['] (number) is number  interpreter-context ; immediate
 : ;   reveal t-postpone exit t-postpone [ ; immediate
 : literal   t-postpone (literal) , ; immediate
 : cell   cell t-postpone literal ; immediate
@@ -308,12 +307,7 @@ only forth also meta-interpreter also meta-compiler definitions also host-interp
 : if           unresolved 0branch ; immediate
 : then         >resolve ; immediate
 
-\ meta-compile +   =>  execute target +  =>  compile + xt
-\ meta-compile if  =>  execute meta if
-\ meta-postpone +   =>  compile (literal), execute target + 
-\ meta-postpone if  =>  execute target if  => compile if xt
-
-: postpone   parse-name find-name meta-postpone ; immediate
+\ : postpone   parse-name find-name meta-postpone ; immediate
 : postcode   t-postpone (literal) parse-name save-code-name a,
    t-postpone , ; immediate
 : compile   t-postpone (literal)  parse-name target,
@@ -353,19 +347,9 @@ immediate: (       immediate: \
 
 only forth definitions
 
-: ?literal,   state @ if [M] literal then ;
-
 : meta-number ( a u -- )   2>r 0 0 2r@ >number nip if 2r> undef
-   else 2r> 3drop ?literal, then ;
-
-finders meta-xt   execute meta-number execute
-
-: meta-parsed ( a u -- )   find-name meta-xt ;
-: meta-compile   action-of parsed  ['] meta-parsed is parsed
-   parse-name included  is parsed ;
-
-interpreter-context definitions also host-interpreter
-: include   meta-compile ;
+   else 2r> 3drop [M] literal then ;
+' meta-number is number,
 
 only forth definitions also meta-interpreter also host-interpreter
 : t-id.     >name type space ;
@@ -434,8 +418,8 @@ only forth definitions also meta-interpreter also host-interpreter
 interpreter-context
 .( #include "forth.h" ) cr
 .( struct word colon_word; ) cr
-meta-compile targets/c/nucleus.fth
-meta-compile kernel.fth
+include targets/c/nucleus.fth
+include kernel.fth
 resolve-all-forward-references
 check-colon-runtime
 disassemble-target-dictionary
