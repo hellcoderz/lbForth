@@ -40,6 +40,8 @@ vocabulary target
 
 defer number,
 defer t-compile,
+action-of number constant host-number
+
 : (create) ( a u -- )   input>r string-input create r>input ;
 : host-word ( xt a u -- )   get-current >r ['] target set-current
    (create) , r> set-current  does> @ t-compile, ;
@@ -286,7 +288,7 @@ only forth also meta-interpreter also meta-compiler definitions also host-interp
 : [defined]   parse-name t-defined? ; immediate
 : [undefined]   postpone [defined] 0= ; immediate
 
-: [   ['] (number) is number  interpreter-context ; immediate
+: [   host-number is number  interpreter-context ; immediate
 : ;   reveal t-postpone exit t-postpone [ ; immediate
 : literal   t-postpone (literal) , ; immediate
 : cell   cell t-postpone literal ; immediate
@@ -394,7 +396,7 @@ only forth definitions also meta-interpreter also host-interpreter
 : .branch ( a xt -- u )   .ref ., .cr @ .addr 2 cells ;
 : .literal ( a xt -- u )   .ref ., .cr dup addr? if @ .addr
    else @ (.) ." U" then 2 cells ;
-\ Duming as a C string doesn't work so well at the moment.
+\ Dumping as a C string doesn't work so well at the moment.
 \ : .sliteral ( a xt -- u )   drop .(literal) @+ tuck .quoted .,
 \    .cr .(literal) dup (.)  aligned 2 cells + ;
 : .xt ( a xt -- u )   dup >name s" branch" compare 0= if .branch else
